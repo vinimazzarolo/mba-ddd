@@ -1,4 +1,9 @@
 import { Entity } from '../../../common/domain/entity';
+import {
+  AnyCollection,
+  ICollection,
+  MyCollectionFactory,
+} from '../../../common/domain/my-collection';
 import Uuid from '../../../common/domain/value-objects/uuid.vo';
 import { EventSpot, EventSpotId } from './event-spot';
 
@@ -19,7 +24,6 @@ export type EventSectionConstructorProps = {
   total_spots: number;
   total_spots_reserved: number;
   price: number;
-  spots?: Set<EventSpot>;
 };
 
 export class EventSection extends Entity {
@@ -30,7 +34,7 @@ export class EventSection extends Entity {
   total_spots: number;
   total_spots_reserved: number;
   price: number;
-  spots: Set<EventSpot>;
+  private _spots: ICollection<EventSpot>;
 
   constructor(props: EventSectionConstructorProps) {
     super();
@@ -44,7 +48,7 @@ export class EventSection extends Entity {
     this.total_spots = props.total_spots;
     this.total_spots_reserved = props.total_spots_reserved;
     this.price = props.price;
-    this.spots = props.spots ?? new Set<EventSpot>();
+    this._spots = MyCollectionFactory.create<EventSpot>(this);
   }
 
   static create(command: EventSectionCreateCommand) {
@@ -54,21 +58,9 @@ export class EventSection extends Entity {
       is_published: false,
       total_spots_reserved: 0,
     });
+
     section.initSpots();
     return section;
-  }
-
-  toJson() {
-    return {
-      id: this.id.value,
-      name: this.name,
-      description: this.description,
-      is_published: this.is_published,
-      total_spots: this.total_spots,
-      total_spots_reserved: this.total_spots_reserved,
-      price: this.price,
-      spots: [...this.spots].map((spot) => spot.toJson()),
-    };
   }
 
   private initSpots() {
@@ -97,17 +89,17 @@ export class EventSection extends Entity {
     spot.changeLocation(command.location);
   }
 
+  publishAll() {
+    this.publish();
+    this.spots.forEach((spot) => spot.publish());
+  }
+
   publish() {
     this.is_published = true;
   }
 
   unPublish() {
     this.is_published = false;
-  }
-
-  publishAll() {
-    this.publish();
-    this.spots.forEach((spot) => spot.publish());
   }
 
   allowReserveSpot(spot_id: EventSpotId) {
@@ -149,5 +141,18 @@ export class EventSection extends Entity {
 
   set spots(spots: AnyCollection<EventSpot>) {
     this._spots = MyCollectionFactory.createFrom<EventSpot>(spots);
+  }
+
+  toJson() {
+    return {
+      id: this.id.value,
+      name: this.name,
+      description: this.description,
+      is_published: this.is_published,
+      total_spots: this.total_spots,
+      total_spots_reserved: this.total_spots_reserved,
+      price: this.price,
+      spots: [...this.spots].map((spot) => spot.toJson()),
+    };
   }
 }

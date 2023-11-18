@@ -25,6 +25,10 @@ export class Customer extends AggregateRoot {
     this.name = props.name;
   }
 
+  changeName(name: string) {
+    this.name = name;
+  }
+
   static create(command: { name: string; cpf: string }) {
     return new Customer({
       name: command.name,
