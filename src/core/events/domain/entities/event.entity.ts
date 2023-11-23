@@ -1,12 +1,13 @@
 import { AggregateRoot } from '../../../common/domain/aggregate-root';
 import Uuid from '../../../common/domain/value-objects/uuid.vo';
-import { EventSection } from './event-section';
+import { EventSection, EventSectionId } from './event-section';
 import {
   AnyCollection,
   ICollection,
   MyCollectionFactory,
 } from '../../../common/domain/my-collection';
 import { PartnerId } from './partner.entity';
+import { EventSpot, EventSpotId } from './event-spot';
 
 export class EventId extends Uuid {}
 
@@ -81,6 +82,35 @@ export class Event extends AggregateRoot {
     this.total_spots += section.total_spots;
   }
 
+  changeSectionInformation(command: {
+    section_id: EventSectionId;
+    name?: string;
+    description?: string | null;
+  }) {
+    const section = this.sections.find((section) =>
+      section.id.equals(command.section_id),
+    );
+    if (!section) {
+      throw new Error('Section not found');
+    }
+    'name' in command && section.changeName(command.name);
+    'description' in command && section.changeDescription(command.description);
+  }
+
+  changeLocation(command: {
+    section_id: EventSectionId;
+    spot_id: EventSpotId;
+    location: string;
+  }) {
+    const section = this.sections.find((section) =>
+      section.id.equals(command.section_id),
+    );
+    if (!section) {
+      throw new Error('Section not found');
+    }
+    section.changeLocation(command);
+  }
+
   changeName(name: string) {
     this.name = name;
   }
@@ -104,6 +134,30 @@ export class Event extends AggregateRoot {
   publishAll() {
     this.publish();
     this._sections.forEach((section) => section.publishAll());
+  }
+
+  allowReserveSpot(data: { section_id: EventSectionId; spot_id: EventSpotId }) {
+    if (!this.is_published) {
+      return false;
+    }
+
+    const section = this.sections.find((s) => s.id.equals(data.section_id));
+    if (!section) {
+      throw new Error('section not found');
+    }
+
+    return section.allowReserveSpot(data.spot_id);
+  }
+
+  markSpotAsReserved(command: {
+    section_id: EventSectionId;
+    spot_id: EventSpotId;
+  }) {
+    const section = this.sections.find((s) => s.id.equals(command.section_id));
+    if (!section) {
+      throw new Error('section not found');
+    }
+    section.markSpotAsReserved(command.spot_id);
   }
 
   get sections(): ICollection<EventSection> {
