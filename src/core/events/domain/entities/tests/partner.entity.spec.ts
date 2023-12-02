@@ -7,5 +7,6 @@ test('deve criar um evento', () => {
     description: 'Descrição do evento de teste',
     date: new Date(),
   });
-  console.log(event);
+  partner.changeName('Novo nome do parceiro');
+  console.log(partner);
 });
