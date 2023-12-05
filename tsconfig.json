@@ -17,6 +17,7 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
     "baseUrl": "./",
-    "paths": {}
+    "paths": {},
+    "esModuleInterop": true,
   }
 }

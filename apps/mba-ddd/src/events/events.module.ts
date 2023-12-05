@@ -33,9 +33,13 @@ import { EventSpotsController } from './events/event-spots.controller';
 import { ApplicationModule } from '../application/application.module';
 import { ApplicationService } from '../core/common/application/application.service';
 import { DomainEventManager } from '../core/common/domain/domain-event-manger';
-import { PartnerCreated } from '../core/events/domain/domain-events/partner-created.event';
 import { MyHandlerHandler } from '../core/events/application/handlers/my-handler.handler';
 import { ModuleRef } from '@nestjs/core';
+import { BullModule, InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
+import { IIntegrationEvent } from '../core/common/domain/integration-event';
+import { PartnerCreated } from '../core/events/domain/domain-events/partner-created.event';
+import { PartnerCreatedIntegrationEvent } from '../core/events/domain/integration-events/partner-created.integration-events';
 
 @Module({
   imports: [
@@ -51,6 +55,9 @@ import { ModuleRef } from '@nestjs/core';
       ],
     }),
     ApplicationModule,
+    BullModule.registerQueue({
+      name: 'integration-events',
+    }),
   ],
   providers: [
     {
@@ -150,16 +157,22 @@ export class EventsModule implements OnModuleInit {
   constructor(
     private readonly domainEventManager: DomainEventManager,
     private moduleRef: ModuleRef,
+    @InjectQueue('integration-events')
+    private integrationEventsQueue: Queue<IIntegrationEvent>,
   ) {}
 
   onModuleInit() {
-    console.log('EventsModule initialized');
     MyHandlerHandler.listensTo().forEach((eventName: string) => {
       this.domainEventManager.register(eventName, async (event) => {
         const handler: MyHandlerHandler =
           await this.moduleRef.resolve(MyHandlerHandler);
         await handler.handle(event);
       });
+    });
+
+    this.domainEventManager.register(PartnerCreated.name, async (event) => {
+      const integrationEvent = new PartnerCreatedIntegrationEvent(event);
+      await this.integrationEventsQueue.add(integrationEvent);
     });
   }
 }

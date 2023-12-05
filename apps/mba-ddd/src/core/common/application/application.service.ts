@@ -11,10 +11,10 @@ export class ApplicationService {
 
   async finish() {
     const aggregateRoots = this.uow.getAggregateRoots();
+    await this.uow.commit();
     for (const aggregateRoot of aggregateRoots) {
       await this.domainEventManager.publish(aggregateRoot);
     }
-    await this.uow.commit();
   }
 
   fail() {}
